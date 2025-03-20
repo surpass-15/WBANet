@@ -67,38 +67,3 @@ class WTConv2d(nn.Module):
             x_ll_in_levels.append(curr_x_tag[:,:,0,:,:])
             x_h_in_levels.append(curr_x_tag[:,:,1:4,:,:])
 
-        next_x_ll = 0
-
-        for i in range(self.wt_levels-1, -1, -1):
-            curr_x_ll = x_ll_in_levels.pop()
-            curr_x_h = x_h_in_levels.pop()
-            curr_shape = shapes_in_levels.pop()
-
-            curr_x_ll = curr_x_ll + next_x_ll
-
-            curr_x = torch.cat([curr_x_ll.unsqueeze(2), curr_x_h], dim=2)
-            next_x_ll = self.iwt_function(curr_x)
-
-            next_x_ll = next_x_ll[:, :, :curr_shape[2], :curr_shape[3]]
-
-        x_tag = next_x_ll
-        assert len(x_ll_in_levels) == 0
-        
-        x = self.base_scale(self.base_conv(x))
-        x = x + x_tag
-
-        
-        if self.do_stride is not None:
-            x = self.do_stride(x)
-
-        return x
-
-class _ScaleModule(nn.Module):
-    def __init__(self, dims, init_scale=1.0, init_bias=0):
-        super(_ScaleModule, self).__init__()
-        self.dims = dims
-        self.weight = nn.Parameter(torch.ones(*dims) * init_scale)
-        self.bias = None
-    
-    def forward(self, x):
-        return torch.mul(self.weight.to('cuda'), x.to('cuda'))
